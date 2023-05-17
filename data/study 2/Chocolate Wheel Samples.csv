@@ -1,0 +1,63 @@
+Sample number,Sample name,Cocoa of excellence group
+1,Roast degree,Roast degree
+2,Cocoa,Cocoa
+3,Total acidity,Acidity
+4,Fruity,Acidity
+5,Acetic,Acidity
+6,Lactic,Acidity
+7,Mineral,Acidity
+8,Rancid Butter,Acidity
+9,Bitterness,Bitter
+10,Mouth-drying,Astringency
+11,Fresh fruit,Fresh fruit
+12,Berry,Fresh fruit
+13,Citrus,Fresh fruit
+14,Cherry / plum,Fresh fruit
+15,Peach,Fresh fruit
+16,Apricot,Fresh fruit
+17,Banana,Fresh fruit
+18,Tropical,Fresh fruit
+19,Browned fruit,Browned fruit
+20,Dried,Browned fruit
+21,Brown,Browned fruit
+22,Over ripe,Browned fruit
+23,Floral,Floral
+24,Grassy,Vegetal
+25,Green vegetal,Vegetal
+26,Herbal,Vegetal
+27,Earthy,Earthy
+28,Mushroom,Earthy
+29,Moss,Earthy
+30,Woodsy,Earthy
+31,Orange blossom,Floral
+32,Flowers,Floral
+33,Woody,Woody
+34,Resin,Woody
+35,Dark wood,Woody
+36,Light wood,Woody
+37,Spice,Spice
+38,Savory,Spice
+39,Umami,Spice
+40,Tobacco,Spice
+41,Spices,Spice
+42,Nutty,Nutty
+43,Nut skin,Nutty
+44,Nut flesh,Nutty
+45,Caramelized sugar,Caramel
+46,Caramel,Caramel
+47,Brown sugar,Caramel
+48,Panela,Caramel
+49,Sweetness,Sweetness
+50,Off-flavors,Off-flavors
+51,Dirty,Off-flavors
+52,Dusty,Off-flavors
+53,Musty,Off-flavors
+54,Mouldy,Off-flavors
+55,Meaty,Animal
+56,Dirty animal / farmyard,Animal
+57,Leather,Animal
+58,Over-fermented,Off-flavors
+59,Rotten fruit,Off-flavors
+60,Putrid,Putrid
+61,Manure,Putrid
+62,Smoky,Off-flavors
