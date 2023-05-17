@@ -5,6 +5,7 @@
 # Import the helper functions (also loads packages)
 library(here)
 source(here("code/helper_functions.R"))
+library(flextable)
 
 # Load the data from this and previous studies
 link_table_incomplete_linking <-
@@ -189,7 +190,8 @@ p_tree_incomplete_link <-
                  show.legend = FALSE) +
   coord_equal() +
   theme_graph() +
-  expand_limits(x = c(-13, 10), y = c(-15, 12))
+  expand_limits(x = c(-13, 10), y = c(-15, 12)) +
+  labs(caption = "incomplete linking")
 
 p_tree_complete_link <-
   additive_tree_complete_linking %>%
@@ -209,7 +211,8 @@ p_tree_complete_link <-
                  show.legend = FALSE) +
   coord_equal() +
   theme_graph() +
-  expand_limits(x = c(-30, 20), y = c(-30, 20))
+  expand_limits(x = c(-30, 20), y = c(-30, 20)) +
+  labs(caption = "complete linking")
 
 p_tree_complete_sort <-
   additive_tree_complete_sorting %>%
@@ -229,7 +232,15 @@ p_tree_complete_sort <-
                  show.legend = FALSE) +
   coord_equal() +
   theme_graph() +
-  expand_limits(x = c(-40, 20), y = c(-30, 20))
+  expand_limits(x = c(-40, 20), y = c(-30, 20)) +
+  labs(caption = "complete sorting")
+
+ggsave(filename = "img/study_1_tree_complete_sort.png", plot = p_tree_complete_sort,
+       height = 6, width = 6, units = "in", scale = 1.2, dpi = 300)
+ggsave(filename = "img/study_1_tree_incomplete_link.png", plot = p_tree_incomplete_link,
+       height = 6, width = 6, units = "in", scale = 1.2, dpi = 300)
+ggsave(filename = "img/study_1_tree_complete_link.png", plot = p_tree_complete_link,
+       height = 6, width = 6, units = "in", scale = 1.2, dpi = 300)
 
 # Graph statistics --------------------------------------------------------
 
@@ -264,10 +275,19 @@ graph_statistics <-
                              .f = ~component_count(.x))) %>%
   unnest(-c(study, sample_set))
 
-graph_statistics %>%
+ft_graph_stats <-
+  graph_statistics %>%
   pivot_longer(transitivity:components) %>%
   group_by(study, name) %>%
-  ggdist::mean_hdi(value)
+  ggdist::median_qi(value) %>%
+  select(study:.upper) %>%
+  flextable() %>%
+  merge_v() %>%
+  fix_border_issues() %>%
+  colformat_double(digits = 2)
+
+ft_graph_stats %>%
+  save_as_docx(path = "tables/study_1_graph_stats.docx", )
 
 # Jaccard stability (resampling analysis) ---------------------------------
 
@@ -410,7 +430,8 @@ jaccard_stability_statistics <-
 
 # Jaccard stability for individual samples
 
-jaccard_stability_statistics %>%
+p_jaccard_individual <-
+  jaccard_stability_statistics %>%
   group_by(sample) %>%
   mutate(mean_stability = mean(stability)) %>%
   ungroup() %>%
@@ -418,13 +439,20 @@ jaccard_stability_statistics %>%
   unite(study, type, col = "study_type", remove = FALSE) %>%
   ggplot(aes(x = sample, y = stability, group = study_type)) +
   geom_line(aes(color = study, linetype = type)) +
-  lims(y = c(0, 1)) +
+  geom_point(aes(color = study), shape = 21, fill = "white", size = 2) +
+  lims(y = c(0.25, 1)) +
   theme_bw() +
-  theme(axis.text.x = element_text(angle = -30, hjust = 0))
+  theme(axis.text.x = element_text(angle = -20, hjust = 0.25)) +
+  labs(x = NULL,
+       y = "Jaccard stability",
+       linetype = "resampling strategy") +
+  theme(legend.position = "bottom")
+
 
 # Group stability (arranged by group stability for a consistent plot)
 
-jaccard_stability_statistics %>%
+p_jaccard_group <-
+  jaccard_stability_statistics %>%
   group_by(study, type, group) %>%
   summarize(group_stability = mean(stability)) %>%
   ungroup() %>%
@@ -434,9 +462,22 @@ jaccard_stability_statistics %>%
   ggplot(aes(x = group, y = group_stability)) +
   geom_line(aes(group = paste0(study, type), color = study, linetype = type)) +
   theme_bw() +
-  lims(y = c(0, 1))
+  lims(y = c(0, 1)) +
+  geom_point(aes(color = study), shape = 21, fill = "white", size = 2) +
+  lims(y = c(0.25, 1)) +
+  theme_bw() +
+  labs(x = "Observed additive tree partition",
+       y = "Jaccard stability",
+       linetype = "resampling strategy") +
+  theme(legend.position = "bottom")
 
+ggsave(filename = "img/study_1_jaccard_individual.png",
+       plot = p_jaccard_individual,
+       units = "in", height = 4, width = 6, scale = 2, dpi = 300)
 
+ggsave(filename = "img/study_1_jaccard_group.png",
+       plot = p_jaccard_group,
+       units = "in", height = 4, width = 6, scale = 2, dpi = 300)
 
 
 
