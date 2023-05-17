@@ -7,13 +7,13 @@ library(here)
 source(here("code/helper_functions.R"))
 
 # Load the data from this and previous studies
-link_table_incomplete_linking <- 
+link_table_incomplete_linking <-
   read_csv(here("data/study 1/study_1_edgelist_incomplete_linking.csv"))
-link_table_complete_linking <- 
+link_table_complete_linking <-
   read_csv(here("data/study 1/study_1_edgelist_complete_linking.csv"))
-link_table_complete_sorting <- 
+link_table_complete_sorting <-
   read_csv(here("data/study 1/study_1_edgelist_complete_sorting.csv"))
-sample_ids <- 
+sample_ids <-
   read_csv(here("data/study 1/study_1_samples.csv"))
 ibd_design <-
   bind_rows(
@@ -34,23 +34,24 @@ set.seed(1234) # for replicability
 # sorting/linking study.
 used_samples_complete_sort <- sample(x = 1:62, size = 20)
 used_samples_complete_link <- sample(x = 1:63, size = 20)
-link_table_complete_linking <- 
+link_table_complete_linking <-
   link_table_complete_linking %>%
   filter(sample_set %in% paste0("J", used_samples_complete_link))
-link_table_complete_sorting <- 
+link_table_complete_sorting <-
   link_table_complete_sorting %>%
   filter(sample_set %in% paste0("J", used_samples_complete_sort))
 
 # Cartoons of resampling approach -----------------------------------------
 
 plot_sort_cartoon <- function(data = link_table_incomplete_linking,
-                              design = sample(x = 1:10, size = 6, replace = FALSE), 
-                              sort = FALSE){
-  
-  data <- 
+                              design = sample(x = 1:10, size = 6, replace = FALSE),
+                              sort = FALSE, edge_colors = c("black", "grey"),
+                              edge_types = c("dashed", "solid")){
+
+  data <-
     data %>%
     select(from, to, presence)
-  
+
   data %>%
     graph_from_data_frame(directed = FALSE) %>%
     as_tbl_graph() %>%
@@ -68,30 +69,41 @@ plot_sort_cartoon <- function(data = link_table_incomplete_linking,
     activate(nodes) %>%
     mutate(resample = ifelse(is.na(resample), "unselected", resample)) %>%
     ggraph(layout = "circle") +
-    geom_edge_fan(aes(linetype = presence, color = resample, width = resample)) + 
+    geom_edge_fan(aes(linetype = presence, color = resample, width = resample)) +
     geom_node_point(aes(color = resample), size = 10, fill = "white", shape = 21) +
-    geom_node_text(aes(label = name, color = resample)) + 
+    geom_node_text(aes(label = name, color = resample)) +
     coord_fixed() +
-    theme_graph() + 
-    scale_edge_linetype_manual(values = c(2, 1)) + 
+    theme_graph() +
+    scale_edge_linetype_manual(values = edge_types) +
     scale_edge_width_manual(values = c(1, 0.2)) +
-    scale_edge_color_manual(values = c("black", "darkgrey")) +
-    scale_color_manual(values = c('black', 'darkgrey')) + 
+    scale_edge_color_manual(values = edge_colors) +
+    scale_color_manual(values = edge_colors) +
     theme(legend.position = "none")
 }
 
 set.seed(123)
 plot_sort_cartoon()
+set.seed(123)
+plot_sort_cartoon(edge_colors = c("black", "transparent"),
+                  edge_types = c("blank", "solid"))
 set.seed(345)
 plot_sort_cartoon()
+set.seed(345)
+plot_sort_cartoon(edge_colors = c("black", "transparent"),
+                  edge_types = c("blank", "solid"))
 
+set.seed(123)
 plot_sort_cartoon(design = 1:10, sort = FALSE)
+set.seed(123)
+plot_sort_cartoon(design = 1:10, sort = FALSE,
+                  edge_colors = c("black", "transparent"),
+                  edge_types = c("blank", "solid"))
 
 # Grouping analysis by recursive partitioning -----------------------------
 
 # Incomplete linking
 
-diss_matrix_incomplete_linking <- 
+diss_matrix_incomplete_linking <-
   link_table_incomplete_linking %>%
   nest(data = -id) %>%
   transmute(dissimilarity = map(.x = data,
@@ -99,14 +111,14 @@ diss_matrix_incomplete_linking <-
   unnest(dissimilarity) %>%
   get_dissimilarity_matrix()
 
-recursive_partition_groups_incomplete_linking <- 
+recursive_partition_groups_incomplete_linking <-
   diss_matrix_incomplete_linking %>%
   get_recursive_partition_groups()
 
-additive_tree_incomplete_linking <- 
-  diss_matrix_incomplete_linking %>% 
+additive_tree_incomplete_linking <-
+  diss_matrix_incomplete_linking %>%
   dist(method = "max") %>%
-  nj() %>% 
+  nj() %>%
   as_tbl_graph() %>%
   left_join(recursive_partition_groups_incomplete_linking,
             by = c("name" = "sample")) %>%
@@ -127,10 +139,10 @@ recursive_partition_groups_complete_linking <-
   diss_matrix_complete_linking %>%
   get_recursive_partition_groups()
 
-additive_tree_complete_linking <- 
+additive_tree_complete_linking <-
   diss_matrix_complete_linking %>%
   dist(method = "max") %>%
-  nj() %>% 
+  nj() %>%
   as_tbl_graph() %>%
   left_join(recursive_partition_groups_complete_linking,
             by = c("name" = "sample"))
@@ -149,18 +161,18 @@ recursive_partition_groups_complete_sorting <-
   diss_matrix_complete_sorting %>%
   get_recursive_partition_groups()
 
-additive_tree_complete_sorting <- 
+additive_tree_complete_sorting <-
   diss_matrix_complete_sorting %>%
   dist(method = "max") %>%
-  nj() %>% 
+  nj() %>%
   as_tbl_graph() %>%
   left_join(recursive_partition_groups_complete_sorting,
             by = c("name" = "sample"))
 
 # And now we plot these
 
-p_tree_incomplete_link <- 
-  additive_tree_incomplete_linking %>% 
+p_tree_incomplete_link <-
+  additive_tree_incomplete_linking %>%
   mutate(type = ifelse(str_detect(name, "Node"), "internal", "leaf"),
          name.y = str_replace_all(name.y, "_", " ") %>%
            str_remove_all("\\?")) %>%
@@ -170,17 +182,17 @@ p_tree_incomplete_link <-
   ggraph(layout = "unrooted", length = length) +
   geom_edge_link(aes(color = color), show.legend = FALSE) +
   geom_node_text(data = . %>% filter(type == "leaf"),
-                 aes(label = name.y, 
-                     color = group, 
-                     angle = atan(y / x) * 180 / pi, 
+                 aes(label = name.y,
+                     color = group,
+                     angle = atan(y / x) * 180 / pi,
                      hjust = ifelse(x > 0, "left", "right")),
                  show.legend = FALSE) +
-  coord_equal() + 
+  coord_equal() +
   theme_graph() +
   expand_limits(x = c(-13, 10), y = c(-15, 12))
 
-p_tree_complete_link <- 
-  additive_tree_complete_linking %>% 
+p_tree_complete_link <-
+  additive_tree_complete_linking %>%
   mutate(type = ifelse(str_detect(name, "Node"), "internal", "leaf"),
          name = str_replace_all(name, "_", " ") %>%
            str_remove_all("\\?")) %>%
@@ -190,17 +202,17 @@ p_tree_complete_link <-
   ggraph(layout = "unrooted", length = length) +
   geom_edge_link(aes(color = color), show.legend = FALSE) +
   geom_node_text(data = . %>% filter(type == "leaf"),
-                 aes(label = name, 
-                     color = group, 
-                     angle = atan(y / x) * 180 / pi, 
+                 aes(label = name,
+                     color = group,
+                     angle = atan(y / x) * 180 / pi,
                      hjust = ifelse(x > 0, "left", "right")),
                  show.legend = FALSE) +
-  coord_equal() + 
+  coord_equal() +
   theme_graph() +
   expand_limits(x = c(-30, 20), y = c(-30, 20))
 
-p_tree_complete_sort <- 
-  additive_tree_complete_sorting %>% 
+p_tree_complete_sort <-
+  additive_tree_complete_sorting %>%
   mutate(type = ifelse(str_detect(name, "Node"), "internal", "leaf"),
          name = str_replace_all(name, "_", " ") %>%
            str_remove_all("\\?")) %>%
@@ -210,18 +222,18 @@ p_tree_complete_sort <-
   ggraph(layout = "unrooted", length = length) +
   geom_edge_link(aes(color = color), show.legend = FALSE) +
   geom_node_text(data = . %>% filter(type == "leaf"),
-                 aes(label = name, 
-                     color = group, 
-                     angle = atan(y / x) * 180 / pi, 
+                 aes(label = name,
+                     color = group,
+                     angle = atan(y / x) * 180 / pi,
                      hjust = ifelse(x > 0, "left", "right")),
                  show.legend = FALSE) +
-  coord_equal() + 
+  coord_equal() +
   theme_graph() +
   expand_limits(x = c(-40, 20), y = c(-30, 20))
 
 # Graph statistics --------------------------------------------------------
 
-link_table_combined <- 
+link_table_combined <-
   bind_rows(
     link_table_complete_linking %>%
       mutate(study = "complete linking"),
@@ -230,9 +242,9 @@ link_table_combined <-
     link_table_incomplete_linking %>%
       left_join(sample_ids, by = c("from" = "sample")) %>%
       left_join(sample_ids, by = c("to" = "sample")) %>%
-      transmute(sample_set = id, 
-                from = name.x, 
-                to = name.y, 
+      transmute(sample_set = id,
+                from = name.x,
+                to = name.y,
                 presence,
                 study = "incomplete_linking")
   )
@@ -242,7 +254,7 @@ graph_statistics <-
   nest(data = -c(study, sample_set)) %>%
   mutate(graph = map(.x = data, ~graph_from_links(.x))) %>%
   transmute(study, sample_set,
-            nodes = map(.x = graph, 
+            nodes = map(.x = graph,
                         .f = ~V(.x)$name),
             transitivity = map(.x = graph,
                                .f = ~transitivity(.x, type = "local", isolate = "zero")),
@@ -264,14 +276,14 @@ graph_statistics %>%
 
 # Incomplete linking (pairwise resampling by necessity)
 
-observed_partitions_incomplete_linking <- 
+observed_partitions_incomplete_linking <-
   recursive_partition_groups_incomplete_linking %>%
   recursive_partition_pairwise()
 
-jaccard_stability_incomplete_linking <- 
+jaccard_stability_incomplete_linking <-
   pairwise_resample_incomplete_linking %>%
-  transmute(boot_id, 
-            dissimilarites = map(.x = simulated_graph, 
+  transmute(boot_id,
+            dissimilarites = map(.x = simulated_graph,
                                  .f = ~get_dissimilarity_from_graph(.x))) %>%
   unnest(everything()) %>%
   nest(data = -boot_id) %>%
@@ -279,7 +291,7 @@ jaccard_stability_incomplete_linking <-
             jaccard_similarity = map(.x = data,
                                      .f = ~get_dissimilarity_matrix(.x) %>%
                                        get_recursive_partition_groups() %>%
-                                       recursive_partition_pairwise() %>% 
+                                       recursive_partition_pairwise() %>%
                                        jaccard_index(observed_partitions_incomplete_linking, .))) %>%
   unnest(everything())
 
@@ -289,10 +301,10 @@ observed_partitions_complete_linking <-
   recursive_partition_groups_complete_linking %>%
   recursive_partition_pairwise()
 
-jaccard_stability_pairwise_complete_linking <- 
+jaccard_stability_pairwise_complete_linking <-
   pairwise_resample_complete_linking %>%
-  transmute(boot_id, 
-            dissimilarites = map(.x = simulated_graph, 
+  transmute(boot_id,
+            dissimilarites = map(.x = simulated_graph,
                                  .f = ~get_dissimilarity_from_graph(.x))) %>%
   unnest(everything()) %>%
   nest(data = -boot_id) %>%
@@ -300,15 +312,15 @@ jaccard_stability_pairwise_complete_linking <-
             jaccard_similarity = map(.x = data,
                                      .f = ~get_dissimilarity_matrix(.x) %>%
                                        get_recursive_partition_groups() %>%
-                                       recursive_partition_pairwise() %>% 
+                                       recursive_partition_pairwise() %>%
                                        jaccard_index(observed_partitions_complete_linking, .))) %>%
   unnest(everything())
 
 # Complete linking (bootstrap)
 
-jaccard_stability_bootstrap_complete_linking <- 
+jaccard_stability_bootstrap_complete_linking <-
   bootstrapped_groups_complete_linking %>%
-  transmute(boot_id, 
+  transmute(boot_id,
             jaccard_similarity = map(.x = recursive_partition,
                                      .f = ~recursive_partition_pairwise(.x) %>%
                                        jaccard_index(observed_partitions_complete_linking, .))) %>%
@@ -320,10 +332,10 @@ observed_partitions_complete_sorting <-
   recursive_partition_groups_complete_sorting %>%
   recursive_partition_pairwise()
 
-jaccard_stability_pairwise_complete_sorting <- 
+jaccard_stability_pairwise_complete_sorting <-
   pairwise_resample_complete_sorting %>%
-  transmute(boot_id, 
-            dissimilarites = map(.x = simulated_graph, 
+  transmute(boot_id,
+            dissimilarites = map(.x = simulated_graph,
                                  .f = ~get_dissimilarity_from_graph(.x))) %>%
   unnest(everything()) %>%
   nest(data = -boot_id) %>%
@@ -331,15 +343,15 @@ jaccard_stability_pairwise_complete_sorting <-
             jaccard_similarity = map(.x = data,
                                      .f = ~get_dissimilarity_matrix(.x) %>%
                                        get_recursive_partition_groups() %>%
-                                       recursive_partition_pairwise() %>% 
+                                       recursive_partition_pairwise() %>%
                                        jaccard_index(observed_partitions_complete_sorting, .))) %>%
   unnest(everything())
 
 # Complete sorting (bootstrap)
 
-jaccard_stability_bootstrap_complete_sorting <- 
+jaccard_stability_bootstrap_complete_sorting <-
   bootstrapped_groups_complete_sorting %>%
-  transmute(boot_id, 
+  transmute(boot_id,
             jaccard_similarity = map(.x = recursive_partition,
                                      .f = ~recursive_partition_pairwise(.x) %>%
                                        jaccard_index(observed_partitions_complete_sorting, .))) %>%
@@ -347,17 +359,17 @@ jaccard_stability_bootstrap_complete_sorting <-
 
 # Combine everything
 
-jaccard_stability_statistics <- 
+jaccard_stability_statistics <-
   jaccard_stability_incomplete_linking %>%
   group_by(sample) %>%
   summarize(stability = mean(jaccard_index)) %>%
   left_join(recursive_partition_groups_incomplete_linking) %>%
   mutate(sample = as.numeric(sample)) %>%
   left_join(sample_ids) %>%
-  transmute(study = "incomplete linking", 
+  transmute(study = "incomplete linking",
             type = "pairwise",
             sample = name,
-            stability, 
+            stability,
             group) %>%
   bind_rows(
     jaccard_stability_bootstrap_complete_linking %>%
@@ -404,10 +416,10 @@ jaccard_stability_statistics %>%
   ungroup() %>%
   mutate(sample = factor(sample) %>% fct_reorder(mean_stability)) %>%
   unite(study, type, col = "study_type", remove = FALSE) %>%
-  ggplot(aes(x = sample, y = stability, group = study_type)) + 
+  ggplot(aes(x = sample, y = stability, group = study_type)) +
   geom_line(aes(color = study, linetype = type)) +
-  lims(y = c(0, 1)) + 
-  theme_bw() + 
+  lims(y = c(0, 1)) +
+  theme_bw() +
   theme(axis.text.x = element_text(angle = -30, hjust = 0))
 
 # Group stability (arranged by group stability for a consistent plot)
@@ -419,8 +431,8 @@ jaccard_stability_statistics %>%
   arrange(study, type, group_stability) %>%
   group_by(study, type) %>%
   mutate(group_name = row_number()) %>%
-  ggplot(aes(x = group, y = group_stability)) + 
-  geom_line(aes(group = paste0(study, type), color = study, linetype = type)) + 
+  ggplot(aes(x = group, y = group_stability)) +
+  geom_line(aes(group = paste0(study, type), color = study, linetype = type)) +
   theme_bw() +
   lims(y = c(0, 1))
 
