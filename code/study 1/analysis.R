@@ -47,7 +47,8 @@ link_table_complete_sorting <-
 plot_sort_cartoon <- function(data = link_table_incomplete_linking,
                               design = sample(x = 1:10, size = 6, replace = FALSE),
                               sort = FALSE, edge_colors = c("black", "grey"),
-                              edge_types = c("dashed", "solid")){
+                              edge_types = c("dashed", "solid"),
+                              edge_width = c(1, 0.2)){
 
   data <-
     data %>%
@@ -76,22 +77,41 @@ plot_sort_cartoon <- function(data = link_table_incomplete_linking,
     coord_fixed() +
     theme_graph() +
     scale_edge_linetype_manual(values = edge_types) +
-    scale_edge_width_manual(values = c(1, 0.2)) +
+    scale_edge_width_manual(values = edge_width) +
     scale_edge_color_manual(values = edge_colors) +
     scale_color_manual(values = edge_colors) +
     theme(legend.position = "none")
 }
 
+# The complete design
+p_observed_similarities <-
+  plot_sort_cartoon(design = 1:10, edge_colors = c("black", "black"),
+                    edge_width = c(0.1, 0.1)) +
+  labs(caption = "Study 1 (incomplete linking) multigraph of observed responses")
+
 set.seed(123)
-plot_sort_cartoon()
+p_simulated_similarities_1_1 <-
+  plot_sort_cartoon(design = ibd_design[1,]) +
+  labs(caption = "Simulated draw 1 (resample) from Study 1, IBD row 1 based on observed responses")
+
 set.seed(123)
-plot_sort_cartoon(edge_colors = c("black", "transparent"),
-                  edge_types = c("blank", "solid"))
-set.seed(345)
-plot_sort_cartoon()
-set.seed(345)
-plot_sort_cartoon(edge_colors = c("black", "transparent"),
-                  edge_types = c("blank", "solid"))
+p_simulated_similarities_1_1_selected <-
+  plot_sort_cartoon(design = ibd_design[1,],
+                    edge_colors = c("black", "transparent"),
+                    edge_types = c("blank", "solid")) +
+  labs(caption = "Resample 1 from Study 1, IBD row 1 with only retained 'similar' judgments")
+
+set.seed(456)
+p_simulated_similarities_1_2 <-
+  plot_sort_cartoon(design = ibd_design[1,]) +
+  labs(caption = "Simulated draw 2 (resample) from Study 1, IBD row 1 based on observed responses")
+
+set.seed(456)
+p_simulated_similarities_1_2_selected <-
+  plot_sort_cartoon(design = ibd_design[1,],
+                    edge_colors = c("black", "transparent"),
+                    edge_types = c("blank", "solid")) +
+  labs(caption = "Resample 2 from Study 1, IBD row 1 with only retained 'similar' judgments")
 
 set.seed(123)
 plot_sort_cartoon(design = 1:10, sort = FALSE)
@@ -99,6 +119,23 @@ set.seed(123)
 plot_sort_cartoon(design = 1:10, sort = FALSE,
                   edge_colors = c("black", "transparent"),
                   edge_types = c("blank", "solid"))
+
+ggsave(filename = "img/study_1_full_multigraph.png",
+       plot = p_observed_similarities,
+       height = 3.5, width = 3.5, units = "in", scale = 2.5, dpi = 300)
+ggsave(filename = "img/study_1_ibd_row_1_possibilities_1.png",
+       plot = p_simulated_similarities_1_1,
+       height = 2.5, width = 2.5, units = "in", scale = 2.7, dpi = 300)
+ggsave(filename = "img/study_1_ibd_row_1_resample_1.png",
+       plot = p_simulated_similarities_1_1_selected,
+       height = 2.5, width = 2.5, units = "in", scale = 2.7, dpi = 300)
+ggsave(filename = "img/study_1_ibd_row_1_possibilities_2.png",
+       plot = p_simulated_similarities_1_2,
+       height = 2.5, width = 2.5, units = "in", scale = 2.7, dpi = 300)
+ggsave(filename = "img/study_1_ibd_row_1_resample_2.png",
+       plot = p_simulated_similarities_1_2_selected,
+       height = 2.5, width = 2.5, units = "in", scale = 2.7, dpi = 300)
+
 
 # Grouping analysis by recursive partitioning -----------------------------
 
@@ -430,75 +467,62 @@ jaccard_stability_statistics <-
 
 # Jaccard stability for individual samples
 
+library(tidytext)
+
 p_jaccard_individual <-
   jaccard_stability_statistics %>%
-  group_by(sample) %>%
-  mutate(mean_stability = mean(stability)) %>%
-  ungroup() %>%
-  mutate(sample = factor(sample) %>% fct_reorder(mean_stability)) %>%
-  unite(study, type, col = "study_type", remove = FALSE) %>%
-  ggplot(aes(x = sample, y = stability, group = study_type)) +
-  geom_line(aes(color = study, linetype = type)) +
-  geom_point(aes(color = study), shape = 21, fill = "white", size = 2) +
-  lims(y = c(0.25, 1)) +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = -20, hjust = 0.25)) +
+  unite(study, type, group, col = "study_type", remove = FALSE) %>%
+  mutate(sample = factor(sample) %>%
+           reorder_within(group, within = study)) %>%
+  ggplot(aes(x = sample, y = stability, color = type)) +
+  geom_line(aes(group = study_type), size = 1) +
+  geom_point(shape = 21, size = 3, fill = "white") +
+  facet_wrap(~ study, scales = "free_x") +
+  scale_x_reordered() +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        legend.position = "top") +
   labs(x = NULL,
        y = "Jaccard stability",
-       linetype = "resampling strategy") +
-  theme(legend.position = "bottom")
-
-
-# Group stability (arranged by group stability for a consistent plot)
-
-p_jaccard_group <-
-  jaccard_stability_statistics %>%
-  group_by(study, type, group) %>%
-  summarize(group_stability = mean(stability)) %>%
-  ungroup() %>%
-  arrange(study, type, group_stability) %>%
-  group_by(study, type) %>%
-  mutate(group_name = row_number()) %>%
-  ggplot(aes(x = group, y = group_stability)) +
-  geom_line(aes(group = paste0(study, type), color = study, linetype = type)) +
-  theme_bw() +
-  lims(y = c(0, 1)) +
-  geom_point(aes(color = study), shape = 21, fill = "white", size = 2) +
-  lims(y = c(0.25, 1)) +
-  theme_bw() +
-  labs(x = "Observed additive tree partition",
-       y = "Jaccard stability",
-       linetype = "resampling strategy") +
-  theme(legend.position = "bottom")
+       color = "resampling strategy") +
+  scale_color_manual(values = c("darkgreen", "tan"))
 
 ggsave(filename = "img/study_1_jaccard_individual.png",
        plot = p_jaccard_individual,
        units = "in", height = 4, width = 6, scale = 2, dpi = 300)
 
-ggsave(filename = "img/study_1_jaccard_group.png",
-       plot = p_jaccard_group,
-       units = "in", height = 4, width = 6, scale = 2, dpi = 300)
 
+# Quick and dirty comparison ----------------------------------------------
 
+# Below is GPA merely to check that the configurations from the 3 methods are
+# indeed similar, except for the placement of MES48
 
+gpa_res <-
+  diss_matrix_incomplete_linking %>%
+  cmdscale() %>%
+  as_tibble(rownames = "sample") %>%
+  left_join(sample_ids %>% mutate(sample = as.character(sample))) %>%
+  transmute(name = str_remove_all(name, " "),
+            x = V1,
+            y = V2) %>%
+  left_join(
+    diss_matrix_complete_linking %>%
+      cmdscale() %>%
+      as_tibble(rownames = "name") %>%
+      mutate(name = str_remove_all(name, " "))
+  ) %>%
+  left_join(
+    diss_matrix_complete_sorting %>%
+      cmdscale() %>%
+      as_tibble(rownames = "name") %>%
+      mutate(name = str_remove_all(name, " ")),
+    by = "name"
+  ) %>%
+  column_to_rownames("name") %>%
+  FactoMineR::GPA(group = c(2, 2, 2))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+gpa_res$RV
+plot(gpa_res)
 
 
 
