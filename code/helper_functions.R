@@ -16,10 +16,10 @@ library(tictoc)
 # From a graph geodesic distance between two samples in [0, Inf), return a
 # dissimilarity in [0, 1]
 graph_dissimilarity <- function(geodesic_distance){
-  1 - ifelse(is.infinite(geodesic_distance), 
-             0, 
-             ifelse(geodesic_distance == 0, 
-                    1, 
+  1 - ifelse(is.infinite(geodesic_distance),
+             0,
+             ifelse(geodesic_distance == 0,
+                    1,
                     1 / geodesic_distance)
   )
 }
@@ -27,7 +27,7 @@ graph_dissimilarity <- function(geodesic_distance){
 # From a table of dissimilarities (derived from graph/geodesic distances on a
 # set of linking results), return a K x K matrix of dissimilarities
 get_dissimilarity_matrix <- function(dissimilarity_table){
-  
+
   dissimilarity_table %>%
     select(from, to, dissimilarity) %>%
     group_by(from, to) %>%
@@ -36,25 +36,25 @@ get_dissimilarity_matrix <- function(dissimilarity_table){
     pivot_wider(names_from = to, values_from = total_dissimilarity) %>%
     column_to_rownames("from") %>%
     as.matrix()
-  
+
 }
 
 # From a K x K dissimilarity matrix (like from get_dissimilarity_matrix()
 # above), return a partition based on the Koenig et al 2021 recursive
 # partitioning algorithm for trees
 get_recursive_partition_groups <- function(dissimilarity_matrix){
-  
-  partitions <- 
+
+  partitions <-
     dissimilarity_matrix %>%
     dist(method = "maximum") %>%
     recursive_partitioning()
-  
+
   partitions[[length(partitions)]] %>%
     enframe() %>%
     unnest(value) %>%
     rename(group = 1, sample = 2) %>%
     arrange(sample)
-  
+
 }
 
 # From a K x 2 partition table with .$group as the column of partitions and
@@ -67,13 +67,13 @@ recursive_partition_pairwise <- function(partition){
   similarity <- matrix(as.matrix(groups), nrow = length(groups), ncol = length(groups))
   similarity <- (similarity == t(similarity)) - 0
   dimnames(similarity) <- list(labels, labels)
-  
+
   similarity
-  
+
 }
 
 get_dissimilarity_table <- function(cooccurrence_table){
-  
+
   cooccurrence_table %>%
     select(from, to, presence) %>%
     filter(from != to) %>%
@@ -85,19 +85,19 @@ get_dissimilarity_table <- function(cooccurrence_table){
     as_tibble(rownames = "from") %>%
     pivot_longer(cols = -from, names_to = "to", values_to = "geodesic_distance") %>%
     mutate(dissimilarity = graph_dissimilarity(geodesic_distance))
-  
+
 }
 
 # From a simple, undirected, unweighted graph, get the graph dissimilarities in
 # a table with .$from, .$to, .$geodesic_distance, and .$dissimilarity
 get_dissimilarity_from_graph <- function(graph){
-  
+
   graph %>%
     distances(weights = NA) %>%
     as_tibble(rownames = "from") %>%
     pivot_longer(cols = -from, names_to = "to", values_to = "geodesic_distance") %>%
     mutate(dissimilarity = graph_dissimilarity(geodesic_distance))
-  
+
 }
 
 # Given a full data set from a sorting or linking study, with .$from, .$to, and
@@ -107,7 +107,7 @@ get_dissimilarity_from_graph <- function(graph){
 # Optionally, if transitivity is required for the samples, "as_sorting = TRUE"
 # will force all groups to be cliques/completely transitive.
 simulate_graph <- function(original_results, selected_samples, as_sorting = FALSE){
-  
+
   # Here we simulate the graph based on the original results
   simulated_graph <-
     original_results %>%
@@ -122,18 +122,18 @@ simulate_graph <- function(original_results, selected_samples, as_sorting = FALS
     graph_from_data_frame(directed = FALSE) %>%
     as_tbl_graph() %>%
     activate(edges) %>%
-    filter(presence == 1) 
-  
+    filter(presence == 1)
+
   # If we are assuming that this is "linking like" we can allow non-transitive similarity
   if(!as_sorting){
     return(simulated_graph)
-  } 
+  }
   # Otherwise we will wrangle the components of the graph into fully connected cliques
   if(as_sorting){
     simulated_graph %>%
       components() %>%
       .$membership %>%
-      as_tibble(rownames = "sample") %>% 
+      as_tibble(rownames = "sample") %>%
       rename(sample = 1, group = 2) %>%
       recursive_partition_pairwise() %>%
       graph_from_adjacency_matrix(mode = "undirected", diag = FALSE) %>%
@@ -146,23 +146,11 @@ simulate_graph <- function(original_results, selected_samples, as_sorting = FALS
 # how connected or disconnected an individual sort is.
 component_count <- function(graph) graph %>% components() %>% .$no
 
-# A function to generate a graph from an edgelist with a .$presence (in c(0, 1))
-# variable, which indicates whether a link is actually drawn or not.
-
-graph_from_links <- 
-  function(links){
-    links %>%
-      graph_from_data_frame(directed = FALSE) %>%
-      simplify(edge.attr.comb = "first") %>%
-      as_tbl_graph() %>%
-      activate(edges) %>%
-      filter(presence == 1)
-  }
 
 # This function is a copy of simulate_graph() that also returns the presence ==
 # 0 links purely for use in visualization, and so isn't to be called in general.
 simulate_graph2 <- function(original_results, selected_samples, as_sorting = FALSE){
-  
+
   # Here we simulate the graph based on the original results
   simulated_graph <-
     original_results %>%
@@ -176,25 +164,25 @@ simulate_graph2 <- function(original_results, selected_samples, as_sorting = FAL
     ungroup() %>%
     graph_from_data_frame(directed = FALSE) %>%
     as_tbl_graph() %>%
-    activate(edges) 
-  
+    activate(edges)
+
   # If we are assuming that this is "linking like" we can allow non-transitive similarity
   if(!as_sorting){
     return(simulated_graph)
-  } 
+  }
   # Otherwise we will wrangle the components of the graph into fully connected cliques
   if(as_sorting){
     simulated_graph %>%
       filter(presence == 1) %>%
       components() %>%
       .$membership %>%
-      as_tibble(rownames = "sample") %>% 
+      as_tibble(rownames = "sample") %>%
       rename(sample = 1, group = 2) %>%
       recursive_partition_pairwise() %>%
       graph_from_adjacency_matrix(mode = "undirected", diag = FALSE) %>%
       as_tbl_graph() %>%
       activate(edges) %>%
-      mutate(presence = 1) 
+      mutate(presence = 1)
   }
 }
 
@@ -203,15 +191,20 @@ simulate_graph2 <- function(original_results, selected_samples, as_sorting = FAL
 # .$presence == 1 AND any isolates.  Simply filtering for .$presence == 1 and
 # then converting to a graph will drop those isolated nodes, so this function
 # does the work for us.
-graph_from_links <- function(link_table){
-  
-  link_table %>%
-    select(from, to, presence) %>%
-    as_tbl_graph(directed = FALSE) %>%
-    activate(edges) %>%
-    filter(presence == 1)
-  
-}
+
+# A function to generate a graph from an edgelist with a .$presence (in c(0, 1))
+# variable, which indicates whether a link is actually drawn or not.
+
+graph_from_links <-
+  function(links){
+    links %>%
+      select(from, to, presence) %>%
+      graph_from_data_frame(directed = FALSE) %>%
+      simplify(edge.attr.comb = "first") %>%
+      as_tbl_graph() %>%
+      activate(edges) %>%
+      filter(presence == 1)
+  }
 
 # This function takes two (indicator) matrices of the same dimensions that
 # represent a (pairwise) partition of items, represented by the rows/columns,
@@ -220,21 +213,21 @@ graph_from_links <- function(link_table){
 # between the two partitions) and 1 (perfect agreement).
 
 jaccard_index <- function(m1, m2){
-  
+
   res <- numeric(nrow(m1))
-  
+
   for(i in 1:nrow(m1)){
-    
+
     j1 <- names(m1[i, m1[i, ] == 1])
     j2 <- names(m2[i, m2[i, ] == 1])
-    
+
     res[i] <- length(intersect(j1, j2)) / length(union(j1, j2))
-    
+
   }
-  
+
   tibble(sample = row.names(m1),
          jaccard_index = res)
-  
+
 }
 
 

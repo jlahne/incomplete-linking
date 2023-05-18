@@ -317,14 +317,14 @@ ft_graph_stats <-
   pivot_longer(transitivity:components) %>%
   group_by(study, name) %>%
   ggdist::median_qi(value) %>%
-  select(study:.upper) %>%
-  flextable() %>%
-  merge_v() %>%
-  fix_border_issues() %>%
-  colformat_double(digits = 2)
+  mutate(across(where(is.numeric), ~round(.x, 2))) %>%
+  transmute(study, name,
+            CI = str_c(value, " (", .lower, ", ", .upper, ")")) %>%
+  pivot_wider(names_from = name, values_from = CI) %>%
+  flextable()
 
 ft_graph_stats %>%
-  save_as_docx(path = "tables/study_1_graph_stats.docx", )
+  save_as_docx(path = "tables/study_1_graph_stats.docx")
 
 # Jaccard stability (resampling analysis) ---------------------------------
 
