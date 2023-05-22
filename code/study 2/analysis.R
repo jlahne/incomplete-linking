@@ -116,6 +116,12 @@ this_palette <- paletteer_d("pals::alphabet")
 
 # Additive trees
 
+tci_incomplete_link <-
+  diss_matrix_incomplete_linking %>%
+  dist(method = "max") %>%
+  nj() %>%
+  TreeTools::TotalCopheneticIndex()
+
 p_tree_incomplete_link <-
   additive_tree_incomplete_linking %>%
   mutate(type = ifelse(str_detect(name, "Node"), "internal", "leaf"),
@@ -134,7 +140,15 @@ p_tree_incomplete_link <-
   theme_graph() +
   expand_limits(x = c(-5, 5), y = c(-5, 5)) +
   scale_color_manual(values = this_palette, aesthetics = c("color", "edge_color")) +
-  labs(caption = "incomplete linking")
+  labs(caption = "incomplete linking") +
+  annotate(geom = "text", x = 0, y = -5, hjust = 0,
+           label = bquote(Total~Cophenetic~Index==.(tci_incomplete_link)))
+
+tci_incomplete_sort <-
+  diss_matrix_incomplete_sorting %>%
+  dist(method = "max") %>%
+  nj() %>%
+  TreeTools::TotalCopheneticIndex()
 
 p_tree_incomplete_sort <-
   additive_tree_incomplete_sorting %>%
@@ -154,7 +168,15 @@ p_tree_incomplete_sort <-
   theme_graph() +
   expand_limits(x = c(-10, 10), y = c(-10, 10)) +
   scale_color_manual(values = this_palette, aesthetics = c("color", "edge_color")) +
-  labs(caption = "incomplete sorting")
+  labs(caption = "incomplete sorting") +
+  annotate(geom = "text", x = 0.5, y = 10, hjust = 0,
+           label = bquote(Total~Cophenetic~Index==.(tci_incomplete_sort)))
+
+tci_complete_sort <-
+  diss_matrix_complete_sorting %>%
+  dist(method = "max") %>%
+  nj() %>%
+  TreeTools::TotalCopheneticIndex()
 
 p_tree_complete_sort <-
   additive_tree_complete_sorting %>%
@@ -174,7 +196,9 @@ p_tree_complete_sort <-
   theme_graph() +
   expand_limits(x = c(-20, 20), y = c(-20, 20)) +
   scale_color_manual(values = this_palette, aesthetics = c("color", "edge_color")) +
-  labs(caption = "complete sorting")
+  labs(caption = "complete sorting") +
+  annotate(geom = "text", x = 1, y = 17, hjust = 0,
+           label = bquote(Total~Cophenetic~Index==.(tci_complete_sort)))
 
 ggsave(filename = "img/study_2_tree_incomplete_linking.png",
        plot = p_tree_incomplete_link,
@@ -214,7 +238,7 @@ ft_graph_stats <-
   ggdist::median_qi(value) %>%
   mutate(across(where(is.numeric), ~round(.x, 2))) %>%
   transmute(study, name,
-             CI = str_c(value, " (", .lower, ", ", .upper, ")")) %>%
+            CI = str_c(value, " (", .lower, ", ", .upper, ")")) %>%
   pivot_wider(names_from = name, values_from = CI) %>%
   flextable()
 
@@ -374,11 +398,13 @@ p_stability_plot_individual <-
   geom_point(aes(color = study), shape = 21, fill = "white", size = 3) +
   theme_classic() +
   theme(axis.text.x = element_text(angle = 60, hjust = 1),
-        legend.position = "top") +
+        legend.position = "bottom",
+        plot.subtitle = element_text(face = "bold")) +
   lims(y = c(0, 1)) +
   labs(x = NULL,
        y = "Jaccard stability",
-       linetype = "resampling strategy") +
+       linetype = "resampling strategy",
+       subtitle = "Individual sample stability") +
   scale_color_manual(values = this_palette[c(6, 11, 12)])
 
 # Groupwise sample stability, line plot
@@ -396,17 +422,26 @@ p_stability_plot_group <-
   ggplot(aes(x = group_name, y = group_stability)) +
   geom_hline(aes(yintercept = mean, color = study, linetype = type),
              size = 0.2,
-             data = horizontal_line_summary_data) +
-  geom_line(aes(group = study_type, color = study, linetype = type), size = 0.75, alpha = 0.8) +
-  geom_point(aes(color = study), shape = 21, fill = "white", size = 3) +
+             data = horizontal_line_summary_data, show.legend = FALSE) +
+  geom_line(aes(group = study_type, color = study, linetype = type),
+            size = 0.75, alpha = 0.8, show.legend = FALSE) +
+  geom_point(aes(color = study), shape = 21, fill = "white", size = 3,
+             show.legend = FALSE) +
   theme_classic() +
-  theme(legend.position = "top") +
+  theme(plot.subtitle = element_text(face = "bold")) +
   lims(y = c(0, 1)) +
   labs(x = NULL,
        y = "Jaccard stability",
-       linetype = "resampling strategy") +
+       linetype = "resampling strategy",
+       subtitle = "Group stability") +
   scale_color_manual(values = this_palette[c(6, 11, 12)])
 
+p_stability <-
+  p_stability_plot_individual / p_stability_plot_group
+
+ggsave(filename = "img/study_2_jaccard_stability.png",
+       plot = p_stability,
+       height = 3, width = 5, units = "in", scale = 3, dpi = 300)
 
 # Looking at the groups ---------------------------------------------------
 
@@ -539,6 +574,59 @@ ft_aligned_groups %>%
   set_header_labels(`Cocoa of excellence group` = "Group Name",
                     wheel_group = "Group Members") %>%
   save_as_docx(path = "tables/study_2_group_alignment.docx")
+
+
+# Quality check with GPA --------------------------------------------------
+
+res_gpa <-
+  diss_matrix_complete_sorting %>%
+  cmdscale() %>%
+  as_tibble(rownames = "sample") %>%
+  left_join(
+    diss_matrix_incomplete_linking %>%
+      cmdscale() %>%
+      as_tibble(rownames = "sample"),
+    by = "sample") %>%
+  left_join(
+    diss_matrix_incomplete_sorting %>%
+      cmdscale() %>%
+      as_tibble(rownames = "sample"),
+    by = "sample"
+  ) %>%
+  column_to_rownames("sample") %>%
+  FactoMineR::GPA(group = c(2, 2, 2), name.group = c("complete sort", "incomplete link", "incomplete sort"))
+
+res_gpa$RV
+res_gpa$simi
+res_gpa$dep
+res_gpa$correlations
+res_gpa$PANOVA
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
