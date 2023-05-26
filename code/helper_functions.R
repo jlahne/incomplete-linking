@@ -218,8 +218,8 @@ jaccard_index <- function(m1, m2){
 
   for(i in 1:nrow(m1)){
 
-    j1 <- names(m1[i, m1[i, ] == 1])
-    j2 <- names(m2[i, m2[i, ] == 1])
+    j1 <- names(m1[i, ])[m1[i, ] == 1]
+    j2 <- names(m2[i, ])[m2[i, ] == 1]
 
     res[i] <- length(intersect(j1, j2)) / length(union(j1, j2))
 
@@ -229,69 +229,3 @@ jaccard_index <- function(m1, m2){
          jaccard_index = res)
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
