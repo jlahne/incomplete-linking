@@ -485,7 +485,8 @@ p_jaccard_individual <-
   labs(x = NULL,
        y = "Jaccard stability",
        color = "resampling strategy") +
-  scale_color_manual(values = c("darkgreen", "tan"))
+  scale_color_manual(values = c("darkgreen", "tan")) +
+  lims(y = c(0, 1))
 
 ggsave(filename = "img/study_1_jaccard_individual.png",
        plot = p_jaccard_individual,
