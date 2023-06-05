@@ -2,6 +2,7 @@
 outputs/
 tables/
 img/
+*.html
 
 # History files
 .Rhistory
