@@ -44,6 +44,7 @@ link_table_complete_sorting <-
 
 # Cartoons of resampling approach -----------------------------------------
 
+# Old sorting cartoon approach
 plot_sort_cartoon <- function(data = link_table_incomplete_linking,
                               design = sample(x = 1:10, size = 6, replace = FALSE),
                               sort = FALSE, edge_colors = c("black", "grey"),
@@ -81,6 +82,149 @@ plot_sort_cartoon <- function(data = link_table_incomplete_linking,
     scale_edge_color_manual(values = edge_colors) +
     scale_color_manual(values = edge_colors) +
     theme(legend.position = "none")
+}
+
+# Revised (weight based) sorting cartoon approach
+plot_weighted_cartoon <- function(data = link_table_incomplete_linking,
+                                  design = sample(x = 1:10, size = 6, replace = FALSE),
+                                  sort = FALSE, design_colors = c("grey", "black"),
+                                  edge_types = c("dashed", "solid"),
+                                  edge_width = c(0.5, 3)){
+
+
+  # Clean up the data and make it into an edgelist
+  data <-
+    data %>%
+    select(from, to, presence)
+
+  # Get the names of the retained samples
+  resample_names <-
+    sample_ids[design, ] %>%
+    .$sample
+
+  # Turn the data into a simple, weighted graph
+  graph_data <-
+    data %>%
+    group_by(from, to) %>%
+    summarize(presented_together = n(),
+              linked = sum(presence),
+              weight = linked / presented_together) %>%
+    graph_from_data_frame(directed = FALSE) %>%
+    as_tbl_graph() %>%
+    # Tag the samples that are in `design`
+    mutate(in_design = if_else(name %in% resample_names,
+                               true = TRUE,
+                               false = FALSE)) %>%
+    # Then tag the edges that are in `design` %>%
+    activate(edges) %>%
+    mutate(in_design = .N()$in_design[to] & .N()$in_design[from]) %>%
+    # Finally, resample the edges that remain according to their observed weight
+    mutate(resample = runif(1, min = 0, max = 1) <= weight & in_design)
+
+  # Create the "overall data" plot
+
+  p_overall <-
+    graph_data %>%
+    ggraph(layout = "circle") +
+    # NB: "fan" will be curved if there is a multigraph ERROR
+    geom_edge_fan(aes(width = weight), alpha = 2/3) +
+    geom_node_point(fill = "white", size = 10, shape = 21) +
+    geom_node_text(aes(label = name)) +
+    coord_equal() +
+    theme_graph() +
+    scale_edge_linetype_manual(values = edge_types[2]) +
+    scale_edge_color_manual(values = design_colors[2]) +
+    scale_color_manual(values = design_colors[2]) +
+    scale_edge_width_continuous(range = edge_width) +
+    theme(legend.position = "none") +
+    labs(caption = "Weighted graph of all observed similarity judgments (links/groups)")
+
+  # Create the "superimposed" plot
+
+  p_superimposed <-
+    graph_data %>%
+    activate(edges) %>%
+    mutate(linetype = if_else(in_design & !resample,
+                              true = FALSE, false = TRUE)) %>%
+    ggraph(layout = "circle") +
+    # NB: "fan" will be curved if there is a multigraph ERROR
+    geom_edge_fan(aes(width = weight,
+                      color = in_design,
+                      linetype = linetype,
+                      alpha = in_design)) +
+    geom_node_point(aes(color = in_design), fill = "white", size = 10, shape = 21) +
+    geom_node_text(aes(color = in_design, label = name)) +
+    coord_equal() +
+    theme_graph() +
+    scale_edge_linetype_manual(values = edge_types) +
+    scale_edge_color_manual(values = design_colors) +
+    scale_color_manual(values = design_colors) +
+    scale_edge_width_continuous(range = c(0.5, 3)) +
+    scale_alpha_manual(values = c(1/2, 1)) +
+    theme(legend.position = "none") +
+    labs(caption = "Weighted graph showing selected samples (black) and simulated similarities (solid lines)")
+
+  # Create the "simulated data only" plot
+
+  if(sort){
+
+    p_simulated <-
+      graph_data %>%
+      activate(edges) %>%
+      filter(resample) %>%
+      components() %>%
+      .$membership %>%
+      as_tibble(rownames = "sample") %>%
+      rename(sample = 1, group = 2) %>%
+      recursive_partition_pairwise() %>%
+      graph_from_adjacency_matrix(mode = "undirected", diag = FALSE) %>%
+      as_tbl_graph() %>%
+      mutate(in_design = name %in% resample_names) %>%
+      ggraph(layout = "circle") +
+      # NB: "fan" will be curved if there is a multigraph ERROR
+      geom_edge_fan(edge_width = 1) +
+      geom_node_point(aes(color = in_design), fill = "white", size = 10, shape = 21) +
+      geom_node_text(aes(color = in_design, label = name)) +
+      coord_equal() +
+      theme_graph() +
+      scale_edge_linetype_manual(values = edge_types[2]) +
+      scale_edge_color_manual(values = design_colors[2]) +
+      scale_color_manual(values = c("transparent", design_colors[2])) +
+      theme(legend.position = "none") +
+      labs(caption = "Unweighted graph showing simulated results (as sorting/transitive)")
+
+  } else{
+
+    p_simulated <-
+      graph_data %>%
+      activate(edges) %>%
+      filter(resample) %>%
+      ggraph(layout = "circle") +
+      # NB: "fan" will be curved if there is a multigraph ERROR
+      geom_edge_fan(edge_width = 1) +
+      geom_node_point(aes(color = in_design), fill = "white", size = 10, shape = 21) +
+      geom_node_text(aes(color = in_design, label = name)) +
+      coord_equal() +
+      theme_graph() +
+      scale_edge_linetype_manual(values = edge_types[2]) +
+      scale_edge_color_manual(values = design_colors[2]) +
+      scale_color_manual(values = c("transparent", design_colors[2])) +
+      theme(legend.position = "none") +
+      labs(caption = "Unweighted graph showing simulated results")
+
+
+  }
+
+  # Return all results
+
+  return(
+    list(
+      observed_results = p_overall,
+      selected_design = p_superimposed,
+      simulated_results = p_simulated
+    )
+  )
+
 }
 
 # The complete design
