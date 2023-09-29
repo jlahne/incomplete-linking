@@ -225,17 +225,27 @@ ggsave(filename = "img/study_2_tree_complete_sorting.png",
 
 # Co-occurrence for incomplete blocks -------------------------------------
 
-tibble(study = c("incomplete sorting", "incomplete linking"),
+p_pairwise <-
+  tibble(study = c("incomplete sorting", "incomplete linking"),
        data = list(clean_incomplete_sorting, clean_incomplete_linking)) %>%
   unnest(everything()) %>%
   group_by(study, from, to) %>%
   summarize(n = n()) %>%
   ungroup() %>%
   filter(from != to) %>%
-  ggplot(aes(x = n)) +
-  geom_histogram() +
-  facet_wrap(~study)
+  ggplot(aes(x = n, fill = study)) +
+  geom_histogram(aes(y = stat(count / sum(count))),
+                 position = position_dodge(), color = "white", bins = 6) +
+  theme_classic() +
+  scale_fill_manual(values = this_palette[11:12]) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_x_continuous(breaks = 3:8) +
+  theme(legend.position = "bottom") +
+  labs(x = NULL, y = NULL)
 
+ggsave(filename = "img/study_2_incomplete_pairwise_cooccurrence.png",
+       plot = p_pairwise,
+       width = 3, height = 2, units = "in", scale = 3, dpi = 300)
 
 # Graph statistics --------------------------------------------------------
 
