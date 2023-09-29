@@ -30,15 +30,27 @@ chocolate_wheel <-
   mutate_all(~tolower(.))
 
 
-# Pull 24 sample sets from complete sorting -------------------------------
+# Pull 30 sample sets from complete sorting -------------------------------
 
 set.seed(1234) # for reproducibility
 
 clean_complete_sorting <-
   clean_complete_sorting %>%
   nest(data = -sample_set) %>%
-  slice_sample(n = 24) %>%
+  slice_sample(n = 30) %>%
   unnest(everything())
+
+# Pull 30 samples from incomplete sorting ---------------------------------
+
+clean_incomplete_sorting <-
+  clean_incomplete_sorting %>%
+  nest(data = -sample_set) %>%
+  separate(sample_set, into = c("judge", "block"), sep = "_") %>%
+  mutate(judge = as.numeric(judge), block = as.numeric(block)) %>%
+  arrange(judge, block) %>%
+  slice_head(n = 90) %>%
+  unite(judge, block, col = "sample_set") %>%
+  unnest(cols = data)
 
 # Grouping analysis by recursive partitioning -----------------------------
 
@@ -166,10 +178,10 @@ p_tree_incomplete_sort <-
                  show.legend = FALSE) +
   coord_equal() +
   theme_graph() +
-  expand_limits(x = c(-10, 10), y = c(-10, 10)) +
+  expand_limits(x = c(-5, 5), y = c(-5, 5)) +
   scale_color_manual(values = this_palette, aesthetics = c("color", "edge_color")) +
   labs(caption = "incomplete sorting") +
-  annotate(geom = "text", x = 0.5, y = 10, hjust = 0,
+  annotate(geom = "text", x = 0.5, y = -4.5, hjust = 0,
            label = bquote(Total~Cophenetic~Index==.(tci_incomplete_sort)))
 
 tci_complete_sort <-
@@ -197,7 +209,7 @@ p_tree_complete_sort <-
   expand_limits(x = c(-20, 20), y = c(-20, 20)) +
   scale_color_manual(values = this_palette, aesthetics = c("color", "edge_color")) +
   labs(caption = "complete sorting") +
-  annotate(geom = "text", x = 1, y = 17, hjust = 0,
+  annotate(geom = "text", x = -18, y = -18, hjust = 0,
            label = bquote(Total~Cophenetic~Index==.(tci_complete_sort)))
 
 ggsave(filename = "img/study_2_tree_incomplete_linking.png",
@@ -209,6 +221,21 @@ ggsave(filename = "img/study_2_tree_incomplete_sorting.png",
 ggsave(filename = "img/study_2_tree_complete_sorting.png",
        plot = p_tree_complete_sort,
        width = 3, height = 3, units = "in", scale = 3, dpi = 300)
+
+
+# Co-occurrence for incomplete blocks -------------------------------------
+
+tibble(study = c("incomplete sorting", "incomplete linking"),
+       data = list(clean_incomplete_sorting, clean_incomplete_linking)) %>%
+  unnest(everything()) %>%
+  group_by(study, from, to) %>%
+  summarize(n = n()) %>%
+  ungroup() %>%
+  filter(from != to) %>%
+  ggplot(aes(x = n)) +
+  geom_histogram() +
+  facet_wrap(~study)
+
 
 # Graph statistics --------------------------------------------------------
 
@@ -262,7 +289,8 @@ ft_graph_stats %>%
 #   incomplete_linking_resampled_pairwise %>%
 #   transmute(boot_id,
 #             dissimilarities = map(.x = simulated_graph,
-#                                   .f = ~get_dissimilarity_from_graph(.x))) %>%
+#                                   .f = ~get_dissimilarity_from_graph(.x),
+#                                   .progress = "simulate graphs")) %>%
 #   unnest(everything()) %>%
 #   nest(data = -boot_id) %>%
 #   transmute(boot_id,
@@ -270,7 +298,8 @@ ft_graph_stats %>%
 #                                      .f = ~get_dissimilarity_matrix(.x) %>%
 #                                        get_recursive_partition_groups() %>%
 #                                        recursive_partition_pairwise() %>%
-#                                        jaccard_index(observed_partitions_incomplete_linking, .))) %>%
+#                                        jaccard_index(observed_partitions_incomplete_linking),
+#                                      .progress = "get jaccard index")) %>%
 #   unnest(everything())
 # toc()
 #
@@ -285,7 +314,8 @@ ft_graph_stats %>%
 #   incomplete_sorting_resampled_pairwise %>%
 #   transmute(boot_id,
 #             dissimilarities = map(.x = simulated_graph,
-#                                   .f = ~get_dissimilarity_from_graph(.x))) %>%
+#                                   .f = ~get_dissimilarity_from_graph(.x),
+#                                   .progress = "simulate graphs")) %>%
 #   unnest(everything()) %>%
 #   nest(data = -boot_id) %>%
 #   transmute(boot_id,
@@ -293,7 +323,8 @@ ft_graph_stats %>%
 #                                      .f = ~get_dissimilarity_matrix(.x) %>%
 #                                        get_recursive_partition_groups() %>%
 #                                        recursive_partition_pairwise() %>%
-#                                        jaccard_index(observed_partitions_incomplete_sorting, .))) %>%
+#                                        jaccard_index(observed_partitions_incomplete_sorting, .),
+#                                      .progress = "get jaccard index")) %>%
 #   unnest(everything())
 # toc()
 #
@@ -309,7 +340,8 @@ ft_graph_stats %>%
 #   complete_sorting_resampled_pairwise %>%
 #   transmute(boot_id,
 #             dissimilarities = map(.x = simulated_graph,
-#                                   .f = ~get_dissimilarity_from_graph(.x))) %>%
+#                                   .f = ~get_dissimilarity_from_graph(.x),
+#                                   .progress = "simulate graphs")) %>%
 #   unnest(everything()) %>%
 #   nest(data = -boot_id) %>%
 #   transmute(boot_id,
@@ -317,7 +349,8 @@ ft_graph_stats %>%
 #                                      .f = ~get_dissimilarity_matrix(.x) %>%
 #                                        get_recursive_partition_groups() %>%
 #                                        recursive_partition_pairwise() %>%
-#                                        jaccard_index(observed_partitions_complete_sorting, .))) %>%
+#                                        jaccard_index(observed_partitions_complete_sorting, .),
+#                                      .progress = "get jaccard index")) %>%
 #   unnest(everything())
 # toc()
 #
@@ -329,7 +362,8 @@ ft_graph_stats %>%
 #   transmute(boot_id,
 #             jaccard_similarity = map(.x = sorting_rc_groups,
 #                                      .f = ~recursive_partition_pairwise(.x) %>%
-#                                        jaccard_index(observed_partitions_complete_sorting, .))) %>%
+#                                        jaccard_index(observed_partitions_complete_sorting, .),
+#                                      .progress = "get jaccard index")) %>%
 #   unnest(everything())
 # toc()
 #
@@ -555,6 +589,7 @@ aligned_groups_wheel %>%
 # First, we output a readable version of the chocolate wheel for reproduction in
 # our paper.
 
+
 ft_aligned_groups <-
   chocolate_wheel %>%
   arrange(`Cocoa of excellence group`) %>%
@@ -563,9 +598,9 @@ ft_aligned_groups <-
   left_join(
     aligned_groups_wheel %>%
       select(-jaccard_index) %>%
-      pivot_wider(names_from = study, values_from = members)
-  ) %>%
-  unnest(everything()) %>%
+      pivot_wider(names_from = study,
+                  values_from = members,
+                  values_fn = ~ str_flatten(string = .x, collapse = "\n\n"))) %>%
   flextable()
 
 ft_aligned_groups %>%
