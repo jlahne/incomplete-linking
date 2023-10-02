@@ -228,56 +228,27 @@ plot_weighted_cartoon <- function(data = link_table_incomplete_linking,
 }
 
 # The complete design
-p_observed_similarities <-
-  plot_sort_cartoon(design = 1:10, edge_colors = c("black", "black"),
-                    edge_width = c(0.1, 0.1)) +
-  labs(caption = "Study 1 (incomplete linking) multigraph of observed responses")
+set.seed(12)
+cartoon_1 <- plot_weighted_cartoon(design = ibd_design[1, ])
+cartoon_2 <- plot_weighted_cartoon(design = ibd_design[1, ])
 
-set.seed(123)
-p_simulated_similarities_1_1 <-
-  plot_sort_cartoon(design = ibd_design[1,]) +
-  labs(caption = "Simulated draw 1 (resample) from Study 1, IBD row 1 based on observed responses")
+cartoon_1$selected_design
+cartoon_2$selected_design
 
-set.seed(123)
-p_simulated_similarities_1_1_selected <-
-  plot_sort_cartoon(design = ibd_design[1,],
-                    edge_colors = c("black", "transparent"),
-                    edge_types = c("blank", "solid")) +
-  labs(caption = "Resample 1 from Study 1, IBD row 1 with only retained 'similar' judgments")
-
-set.seed(456)
-p_simulated_similarities_1_2 <-
-  plot_sort_cartoon(design = ibd_design[1,]) +
-  labs(caption = "Simulated draw 2 (resample) from Study 1, IBD row 1 based on observed responses")
-
-set.seed(456)
-p_simulated_similarities_1_2_selected <-
-  plot_sort_cartoon(design = ibd_design[1,],
-                    edge_colors = c("black", "transparent"),
-                    edge_types = c("blank", "solid")) +
-  labs(caption = "Resample 2 from Study 1, IBD row 1 with only retained 'similar' judgments")
-
-set.seed(123)
-plot_sort_cartoon(design = 1:10, sort = FALSE)
-set.seed(123)
-plot_sort_cartoon(design = 1:10, sort = FALSE,
-                  edge_colors = c("black", "transparent"),
-                  edge_types = c("blank", "solid"))
-
-ggsave(filename = "img/study_1_full_multigraph.png",
-       plot = p_observed_similarities,
+ggsave(filename = "img/study_1_full_design.png",
+       plot = cartoon_1$observed_results,
        height = 3.5, width = 3.5, units = "in", scale = 2.5, dpi = 300)
 ggsave(filename = "img/study_1_ibd_row_1_possibilities_1.png",
-       plot = p_simulated_similarities_1_1,
+       plot = cartoon_1$selected_design,
        height = 2.5, width = 2.5, units = "in", scale = 2.7, dpi = 300)
 ggsave(filename = "img/study_1_ibd_row_1_resample_1.png",
-       plot = p_simulated_similarities_1_1_selected,
+       plot = cartoon_1$simulated_results,
        height = 2.5, width = 2.5, units = "in", scale = 2.7, dpi = 300)
 ggsave(filename = "img/study_1_ibd_row_1_possibilities_2.png",
-       plot = p_simulated_similarities_1_2,
+       plot = cartoon_2$selected_design,
        height = 2.5, width = 2.5, units = "in", scale = 2.7, dpi = 300)
 ggsave(filename = "img/study_1_ibd_row_1_resample_2.png",
-       plot = p_simulated_similarities_1_2_selected,
+       plot = cartoon_2$simulated_results,
        height = 2.5, width = 2.5, units = "in", scale = 2.7, dpi = 300)
 
 
