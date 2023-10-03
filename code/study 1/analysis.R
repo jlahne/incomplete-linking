@@ -322,7 +322,31 @@ additive_tree_complete_sorting <-
   left_join(recursive_partition_groups_complete_sorting,
             by = c("name" = "sample"))
 
+# Then we find a shared color palette for everything
+
+color_reference <-
+  bind_rows(recursive_partition_groups_complete_linking %>%
+            mutate(sample = str_replace_all(sample, "_", " ") %>%
+                     str_remove_all("\\?") %>%
+                     str_squish()),
+          recursive_partition_groups_complete_sorting %>%
+            mutate(sample = str_replace_all(sample, "_", " ") %>%
+                     str_remove_all("\\?") %>%
+                     str_squish()),
+          recursive_partition_groups_incomplete_linking %>%
+            left_join(sample_ids %>% mutate(sample = as.character(sample))) %>%
+            transmute(group,
+                      sample = str_replace_all(name, "_", " ") %>%
+                                      str_remove_all("\\?") %>%
+                                      str_squish())) %>%
+  mutate(study = rep(c("cl", "cs", "il"), each = 10)) %>%
+  pivot_wider(names_from = study, values_from = group) %>%
+  arrange(cs, cl)
+
 # And now we plot these
+
+library(paletteer)
+this_palette <- paletteer_d("pals::alphabet")
 
 p_tree_incomplete_link <-
   additive_tree_incomplete_linking %>%
@@ -343,7 +367,9 @@ p_tree_incomplete_link <-
   coord_equal() +
   theme_graph() +
   expand_limits(x = c(-13, 10), y = c(-15, 12)) +
-  labs(caption = "incomplete linking")
+  labs(caption = "incomplete linking") +
+  scale_color_manual(values = this_palette[c(11, 12, 14)]) +
+  scale_edge_color_manual(values = this_palette[c(11, 12, 14)])
 
 p_tree_complete_link <-
   additive_tree_complete_linking %>%
@@ -364,7 +390,10 @@ p_tree_complete_link <-
   coord_equal() +
   theme_graph() +
   expand_limits(x = c(-30, 20), y = c(-30, 20)) +
-  labs(caption = "complete linking")
+  labs(caption = "complete linking") +
+  scale_color_manual(values = this_palette[c(11, 12, 13, 14)]) +
+  scale_edge_color_manual(values = this_palette[c(11, 12, 13, 14)])
+
 
 p_tree_complete_sort <-
   additive_tree_complete_sorting %>%
@@ -385,7 +414,10 @@ p_tree_complete_sort <-
   coord_equal() +
   theme_graph() +
   expand_limits(x = c(-40, 20), y = c(-30, 20)) +
-  labs(caption = "complete sorting")
+  labs(caption = "complete sorting") +
+  scale_color_manual(values = this_palette[c(14, 11, 12)]) +
+  scale_edge_color_manual(values = this_palette[c(14, 11, 12)])
+
 
 ggsave(filename = "img/study_1_tree_complete_sort.png", plot = p_tree_complete_sort,
        height = 6, width = 6, units = "in", scale = 1.2, dpi = 300)
