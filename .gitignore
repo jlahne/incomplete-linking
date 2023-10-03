@@ -1,11 +1,13 @@
 # PROJECT SPECIFIC:
-outputs/
-tables/
-img/
+outputs/*
+tables/*
+img/*
 *.html
+*.png
+
 
 # History files
-.Rhistory
+.Rhistory*
 .Rapp.history
 
 # Session Data files
