@@ -326,19 +326,19 @@ additive_tree_complete_sorting <-
 
 color_reference <-
   bind_rows(recursive_partition_groups_complete_linking %>%
-            mutate(sample = str_replace_all(sample, "_", " ") %>%
-                     str_remove_all("\\?") %>%
-                     str_squish()),
-          recursive_partition_groups_complete_sorting %>%
-            mutate(sample = str_replace_all(sample, "_", " ") %>%
-                     str_remove_all("\\?") %>%
-                     str_squish()),
-          recursive_partition_groups_incomplete_linking %>%
-            left_join(sample_ids %>% mutate(sample = as.character(sample))) %>%
-            transmute(group,
-                      sample = str_replace_all(name, "_", " ") %>%
-                                      str_remove_all("\\?") %>%
-                                      str_squish())) %>%
+              mutate(sample = str_replace_all(sample, "_", " ") %>%
+                       str_remove_all("\\?") %>%
+                       str_squish()),
+            recursive_partition_groups_complete_sorting %>%
+              mutate(sample = str_replace_all(sample, "_", " ") %>%
+                       str_remove_all("\\?") %>%
+                       str_squish()),
+            recursive_partition_groups_incomplete_linking %>%
+              left_join(sample_ids %>% mutate(sample = as.character(sample))) %>%
+              transmute(group,
+                        sample = str_replace_all(name, "_", " ") %>%
+                          str_remove_all("\\?") %>%
+                          str_squish())) %>%
   mutate(study = rep(c("cl", "cs", "il"), each = 10)) %>%
   pivot_wider(names_from = study, values_from = group) %>%
   arrange(cs, cl)
@@ -616,7 +616,7 @@ jaccard_stability_statistics <-
 
 library(tidytext)
 
-p_jaccard_individual <-
+p_jaccard_group <-
   jaccard_stability_statistics %>%
   unite(study, type, group, col = "study_type", remove = FALSE) %>%
   mutate(sample = factor(sample) %>%
@@ -635,8 +635,54 @@ p_jaccard_individual <-
   scale_color_manual(values = c("darkgreen", "tan")) +
   lims(y = c(0, 1))
 
-ggsave(filename = "img/study_1_jaccard_individual.png",
+ggsave(filename = "img/study_1_jaccard_group.png",
+       plot = p_jaccard_group,
+       units = "in", height = 4, width = 6, scale = 2, dpi = 300)
+
+stability_colors <-
+  this_palette[
+    # Complete link group colors
+    c(rep(c(11, 12, 13, 14), times = 2),
+      # Complete sort group colors
+      rep(c(14, 11, 12), times = 2),
+      # Incomplete link group colors
+      c(11, 12, 14))
+  ]
+
+p_jaccard_individual <-
+  jaccard_stability_statistics %>%
+  unite(study, type, group, col = "study_group", remove = FALSE) %>%
+  unite(study, type, col = "study_type", remove = FALSE) %>%
+  mutate(sample = factor(sample) %>% fct_reorder(stability)) %>%
+  ggplot(aes(x = sample, y = stability)) +
+  geom_line(aes(group = study_type, linetype = type)) +
+  geom_point(aes(fill = study_group, shape = study),
+             size = 4, color = "white") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "top") +
+  labs(x = NULL,
+       y = "Jaccard stability") +
+  scale_fill_manual(values = stability_colors, ) +
+  scale_shape_manual(values = c(21, 22, 25)) +
+  guides(fill = "none",
+         shape = guide_legend(override.aes = list(shape = c(21, 22, 25),
+                                                  color = "black",
+                                                  fill = "black"))) +
+  lims(y = c(0, 1))
+
+ggsave(filename = "img/study_1_jaccard_individual-v1.png",
        plot = p_jaccard_individual,
+       units = "in", height = 4, width = 6, scale = 2, dpi = 300)
+
+p_jaccard_individual_faceted <-
+  p_jaccard_individual +
+  facet_wrap(~study_type, nrow = 1,
+             labeller = labeller(study_type = ~str_replace(.x, "_", " - "))) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+ggsave(filename = "img/study_1_jaccard_individual-v2.png",
+       plot = p_jaccard_individual_faceted,
        units = "in", height = 4, width = 6, scale = 2, dpi = 300)
 
 
