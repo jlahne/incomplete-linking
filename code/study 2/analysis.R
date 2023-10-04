@@ -9,6 +9,9 @@ library(gt)
 library(flextable)
 source(here("code/helper_functions.R"))
 library(tidytext)
+library(paletteer)
+
+this_palette <- paletteer_d("pals::alphabet")
 
 clean_incomplete_linking <-
   read_csv(here("data/study 2/clean_incomplete_linking_table.csv"))
@@ -120,125 +123,22 @@ additive_tree_complete_sorting <-
   left_join(recursive_partition_groups_complete_sorting,
             by = c("name" = "sample"))
 
-# Plots
-
-library(paletteer)
-
-this_palette <- paletteer_d("pals::alphabet")
-
-# Additive trees
-
-tci_incomplete_link <-
-  diss_matrix_incomplete_linking %>%
-  dist(method = "max") %>%
-  nj() %>%
-  TreeTools::TotalCopheneticIndex()
-
-p_tree_incomplete_link <-
-  additive_tree_incomplete_linking %>%
-  mutate(type = ifelse(str_detect(name, "Node"), "internal", "leaf"),
-         group = as.factor(group)) %>%
-  activate(edges) %>%
-  mutate(color = .N()$group[to]) %>%
-  ggraph(layout = "unrooted", length = length) +
-  geom_edge_link(aes(color = color), show.legend = FALSE) +
-  geom_node_text(data = . %>% filter(type == "leaf"),
-                 aes(label = name,
-                     color = group,
-                     angle = atan(y / x) * 180 / pi,
-                     hjust = ifelse(x > 0, "left", "right")),
-                 show.legend = FALSE) +
-  coord_equal() +
-  theme_graph() +
-  expand_limits(x = c(-5, 5), y = c(-5, 5)) +
-  scale_color_manual(values = this_palette, aesthetics = c("color", "edge_color")) +
-  labs(caption = "incomplete linking") +
-  annotate(geom = "text", x = 0, y = -5, hjust = 0,
-           label = bquote(Total~Cophenetic~Index==.(tci_incomplete_link)))
-
-tci_incomplete_sort <-
-  diss_matrix_incomplete_sorting %>%
-  dist(method = "max") %>%
-  nj() %>%
-  TreeTools::TotalCopheneticIndex()
-
-p_tree_incomplete_sort <-
-  additive_tree_incomplete_sorting %>%
-  mutate(type = ifelse(str_detect(name, "Node"), "internal", "leaf"),
-         group = as.factor(group)) %>%
-  activate(edges) %>%
-  mutate(color = .N()$group[to]) %>%
-  ggraph(layout = "unrooted", length = length) +
-  geom_edge_link(aes(color = color), show.legend = FALSE) +
-  geom_node_text(data = . %>% filter(type == "leaf"),
-                 aes(label = name,
-                     color = group,
-                     angle = atan(y / x) * 180 / pi,
-                     hjust = ifelse(x > 0, "left", "right")),
-                 show.legend = FALSE) +
-  coord_equal() +
-  theme_graph() +
-  expand_limits(x = c(-5, 5), y = c(-5, 5)) +
-  scale_color_manual(values = this_palette, aesthetics = c("color", "edge_color")) +
-  labs(caption = "incomplete sorting") +
-  annotate(geom = "text", x = 0.5, y = -4.5, hjust = 0,
-           label = bquote(Total~Cophenetic~Index==.(tci_incomplete_sort)))
-
-tci_complete_sort <-
-  diss_matrix_complete_sorting %>%
-  dist(method = "max") %>%
-  nj() %>%
-  TreeTools::TotalCopheneticIndex()
-
-p_tree_complete_sort <-
-  additive_tree_complete_sorting %>%
-  mutate(type = ifelse(str_detect(name, "Node"), "internal", "leaf"),
-         group = as.factor(group)) %>%
-  activate(edges) %>%
-  mutate(color = .N()$group[to]) %>%
-  ggraph(layout = "unrooted", length = length) +
-  geom_edge_link(aes(color = color), show.legend = FALSE) +
-  geom_node_text(data = . %>% filter(type == "leaf"),
-                 aes(label = name,
-                     color = group,
-                     angle = atan(y / x) * 180 / pi,
-                     hjust = ifelse(x > 0, "left", "right")),
-                 show.legend = FALSE) +
-  coord_equal() +
-  theme_graph() +
-  expand_limits(x = c(-20, 20), y = c(-20, 20)) +
-  scale_color_manual(values = this_palette, aesthetics = c("color", "edge_color")) +
-  labs(caption = "complete sorting") +
-  annotate(geom = "text", x = -18, y = -18, hjust = 0,
-           label = bquote(Total~Cophenetic~Index==.(tci_complete_sort)))
-
-ggsave(filename = "img/study_2_tree_incomplete_linking.png",
-       plot = p_tree_incomplete_link,
-       width = 3, height = 3, units = "in", scale = 3, dpi = 300)
-ggsave(filename = "img/study_2_tree_incomplete_sorting.png",
-       plot = p_tree_incomplete_sort,
-       width = 3, height = 3, units = "in", scale = 3, dpi = 300)
-ggsave(filename = "img/study_2_tree_complete_sorting.png",
-       plot = p_tree_complete_sort,
-       width = 3, height = 3, units = "in", scale = 3, dpi = 300)
-
 
 # Co-occurrence for incomplete blocks -------------------------------------
 
 p_pairwise <-
   tibble(study = c("incomplete sorting", "incomplete linking"),
-       data = list(clean_incomplete_sorting, clean_incomplete_linking)) %>%
+         data = list(clean_incomplete_sorting, clean_incomplete_linking)) %>%
   unnest(everything()) %>%
   group_by(study, from, to) %>%
   summarize(n = n()) %>%
   ungroup() %>%
   filter(from != to) %>%
   ggplot(aes(x = n, fill = study)) +
-  geom_histogram(aes(y = stat(count / sum(count))),
-                 position = position_dodge(), color = "white", bins = 6) +
+  geom_histogram(position = position_dodge(), color = "white", bins = 6) +
   theme_classic() +
   scale_fill_manual(values = this_palette[11:12]) +
-  scale_y_continuous(labels = scales::percent_format()) +
+  #scale_y_continuous(labels = scales::percent_format()) +
   scale_x_continuous(breaks = 3:8) +
   theme(legend.position = "bottom") +
   labs(x = NULL, y = NULL)
@@ -584,6 +484,8 @@ aligned_groups_wheel <-
   ) %>%
   left_join(partition_vectors_chocolate_wheel, by = c("target_group" = "group")) %>%
   transmute(study,
+            study_group_number = group,
+            wheel_group_number = target_group,
             members = members.x,
             wheel_group = map_chr(members.y, ~str_c(.x, collapse = ", ")),
             jaccard_index)
@@ -607,7 +509,7 @@ ft_aligned_groups <-
   summarize(wheel_group = str_c(`Sample name`, collapse = ", ")) %>%
   left_join(
     aligned_groups_wheel %>%
-      select(-jaccard_index) %>%
+      select(-jaccard_index, -study_group_number, -wheel_group_number) %>%
       pivot_wider(names_from = study,
                   values_from = members,
                   values_fn = ~ str_flatten(string = .x, collapse = "\n\n"))) %>%
@@ -619,6 +521,177 @@ ft_aligned_groups %>%
   set_header_labels(`Cocoa of excellence group` = "Group Name",
                     wheel_group = "Group Members") %>%
   save_as_docx(path = "tables/study_2_group_alignment.docx")
+
+
+
+# Additive tree plots -----------------------------------------------------
+
+# Palette alignment
+
+tree_palette <- paletteer_d("khroma::discreterainbow")[-1]
+plot(tree_palette)
+
+# Produce a table with vertical merging of identical entries
+aligned_groups_wheel %>%
+  select(study, study_group_number, wheel_group_number) %>%
+  pivot_wider(names_from = study, values_from = study_group_number) %>%
+  unnest(2) %>%
+  unnest(3) %>%
+  unnest(4) %>%
+  arrange(wheel_group_number) %>%
+  flextable() %>%
+  merge_v()
+
+# Manually recreate the tables. The strategy is as follows:
+
+# First list the groups in a method ordered by the groups they match in the
+# Cocoa of excellence wheel.  Then, manually (I did this with a paper and
+# pencil) list the "color order" these groups come, incorporating "skips" caused
+# by multiple other groups lining up with the wheel groups.  Finally, find
+# missing groups and add them to the end of the table, giving them "color order"
+# numbers that start after the highest color order assigned to any group (23).
+
+# incomplete linking color table
+
+# There are 23 groups
+
+color_table_incomplete_linking <-
+  tibble(group_number = c(8, 3, 10, 11, 2, 7, 6, 19, 22, 23,
+                          13, 15, 1, 4, 12, 16, 18, 5, 17, 20),
+         color_order = c(1, 2, 3, 4, 5, 7, 9, 10, 11, 12, 13,
+                         14, 15, 16, 17, 18, 19, 20, 21, 22)) %>%
+  bind_rows(
+    tibble(group_number = c(9, 14, 21),
+           color_order = c(24, 25, 26))) %>%
+  arrange(group_number)
+
+# incomplete sorting color table
+
+# There are 19 groups
+
+color_table_incomplete_sorting <-
+  tibble(group_number = c(5, 17, 18, 6, 1, 2, 12, 3, 4,
+                          13, 8, 9, 14, 10, 11, 15, 16),
+         color_order = c(1, 2, 3, 4, 5, 7, 9, 10, 11,
+                         13, 15, 16, 17, 18, 19, 20, 21)) %>%
+  bind_rows(tibble(group_number = c(7, 19),
+                   color_order = c(24, 25))) %>%
+  arrange(group_number)
+
+# complete sorting color table
+
+# There are 17 groups
+
+color_table_complete_sorting <-
+  tibble(group_number = c(7, 11, 6, 8, 16, 3, 17, 2,
+                          4, 5, 1, 9, 10, 14, 15, 12),
+         color_order = c(1, 2, 4, 5, 6, 7, 8, 9,
+                         10, 11, 13, 15, 16, 17, 18, 20)) %>%
+  bind_rows(tibble(group_number = 13,
+                   color_order = 24)) %>%
+  arrange(group_number)
+
+
+# Plots
+
+# Additive trees
+
+tci_incomplete_link <-
+  diss_matrix_incomplete_linking %>%
+  dist(method = "max") %>%
+  nj() %>%
+  TreeTools::TotalCopheneticIndex()
+
+p_tree_incomplete_link <-
+  additive_tree_incomplete_linking %>%
+  mutate(type = ifelse(str_detect(name, "Node"), "internal", "leaf"),
+         group = as.factor(group)) %>%
+  activate(edges) %>%
+  mutate(color = .N()$group[to]) %>%
+  ggraph(layout = "unrooted", length = length) +
+  geom_edge_link(aes(color = color), show.legend = FALSE) +
+  geom_node_text(data = . %>% filter(type == "leaf"),
+                 aes(label = name,
+                     color = group,
+                     angle = atan(y / x) * 180 / pi,
+                     hjust = ifelse(x > 0, "left", "right")),
+                 show.legend = FALSE) +
+  coord_equal() +
+  theme_graph() +
+  expand_limits(x = c(-5, 5), y = c(-5, 5)) +
+  scale_color_manual(values = tree_palette[color_table_incomplete_linking$color_order],
+                     aesthetics = c("color", "edge_color")) +
+  labs(caption = "incomplete linking") +
+  annotate(geom = "text", x = 0, y = -5, hjust = 0,
+           label = bquote(Total~Cophenetic~Index==.(tci_incomplete_link)))
+
+tci_incomplete_sort <-
+  diss_matrix_incomplete_sorting %>%
+  dist(method = "max") %>%
+  nj() %>%
+  TreeTools::TotalCopheneticIndex()
+
+p_tree_incomplete_sort <-
+  additive_tree_incomplete_sorting %>%
+  mutate(type = ifelse(str_detect(name, "Node"), "internal", "leaf"),
+         group = as.factor(group)) %>%
+  activate(edges) %>%
+  mutate(color = .N()$group[to]) %>%
+  ggraph(layout = "unrooted", length = length) +
+  geom_edge_link(aes(color = color), show.legend = FALSE) +
+  geom_node_text(data = . %>% filter(type == "leaf"),
+                 aes(label = name,
+                     color = group,
+                     angle = atan(y / x) * 180 / pi,
+                     hjust = ifelse(x > 0, "left", "right")),
+                 show.legend = FALSE) +
+  coord_equal() +
+  theme_graph() +
+  expand_limits(x = c(-5, 5), y = c(-5, 5)) +
+  scale_color_manual(values = tree_palette[color_table_incomplete_sorting$color_order],
+                     aesthetics = c("color", "edge_color")) +
+  labs(caption = "incomplete sorting") +
+  annotate(geom = "text", x = 0.5, y = -4.5, hjust = 0,
+           label = bquote(Total~Cophenetic~Index==.(tci_incomplete_sort)))
+
+tci_complete_sort <-
+  diss_matrix_complete_sorting %>%
+  dist(method = "max") %>%
+  nj() %>%
+  TreeTools::TotalCopheneticIndex()
+
+p_tree_complete_sort <-
+  additive_tree_complete_sorting %>%
+  mutate(type = ifelse(str_detect(name, "Node"), "internal", "leaf"),
+         group = as.factor(group)) %>%
+  activate(edges) %>%
+  mutate(color = .N()$group[to]) %>%
+  ggraph(layout = "unrooted", length = length) +
+  geom_edge_link(aes(color = color), show.legend = FALSE) +
+  geom_node_text(data = . %>% filter(type == "leaf"),
+                 aes(label = name,
+                     color = group,
+                     angle = atan(y / x) * 180 / pi,
+                     hjust = ifelse(x > 0, "left", "right")),
+                 show.legend = FALSE) +
+  coord_equal() +
+  theme_graph() +
+  expand_limits(x = c(-20, 20), y = c(-20, 20)) +
+  scale_color_manual(values = tree_palette[color_table_complete_sorting$color_order],
+                     aesthetics = c("color", "edge_color")) +
+  labs(caption = "complete sorting") +
+  annotate(geom = "text", x = -18, y = -18, hjust = 0,
+           label = bquote(Total~Cophenetic~Index==.(tci_complete_sort)))
+
+ggsave(filename = "img/study_2_tree_incomplete_linking.png",
+       plot = p_tree_incomplete_link,
+       width = 3, height = 3, units = "in", scale = 3, dpi = 300)
+ggsave(filename = "img/study_2_tree_incomplete_sorting.png",
+       plot = p_tree_incomplete_sort,
+       width = 3, height = 3, units = "in", scale = 3, dpi = 300)
+ggsave(filename = "img/study_2_tree_complete_sorting.png",
+       plot = p_tree_complete_sort,
+       width = 3, height = 3, units = "in", scale = 3, dpi = 300)
 
 
 # Quality check with GPA --------------------------------------------------
