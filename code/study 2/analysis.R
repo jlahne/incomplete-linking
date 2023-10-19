@@ -140,8 +140,9 @@ p_pairwise <-
   scale_fill_manual(values = this_palette[11:12]) +
   #scale_y_continuous(labels = scales::percent_format()) +
   scale_x_continuous(breaks = 3:8) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
   theme(legend.position = "bottom") +
-  labs(x = NULL, y = NULL)
+  labs(x = "Pairwise Co-occurrence Count", y = "# Observed")
 
 ggsave(filename = "img/study_2_incomplete_pairwise_cooccurrence.png",
        plot = p_pairwise,
@@ -304,19 +305,19 @@ jaccard_stability_statistics <-
       group_by(sample) %>%
       ggdist::mean_qi(jaccard_index) %>%
       mutate(study = "complete sorting",
-             type = "pairwise resample") %>%
+             type = "pairwise simulation") %>%
       left_join(recursive_partition_groups_complete_sorting),
     jaccard_stability_incomplete_linking %>%
       group_by(sample) %>%
       ggdist::mean_qi(jaccard_index) %>%
       mutate(study = "incomplete linking",
-             type = "pairwise resample") %>%
+             type = "pairwise simulation") %>%
       left_join(recursive_partition_groups_incomplete_linking),
     jaccard_stability_incomplete_sorting %>%
       group_by(sample) %>%
       ggdist::mean_qi(jaccard_index) %>%
       mutate(study = "incomplete sorting",
-             type = "pairwise resample") %>%
+             type = "pairwise simulation") %>%
       left_join(recursive_partition_groups_incomplete_sorting)
   )
 
