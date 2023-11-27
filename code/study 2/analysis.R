@@ -134,12 +134,13 @@ p_pairwise <-
   summarize(n = n()) %>%
   ungroup() %>%
   filter(from != to) %>%
-  ggplot(aes(x = n, fill = study)) +
-  geom_histogram(position = position_dodge(), color = "white", bins = 6) +
+  count(study, n) %>%
+  mutate(nn = nn / 2) %>%
+  ggplot(aes(x = n, y = nn, fill = study)) +
+  geom_col(position = "dodge") +
+  scale_x_continuous(breaks = 3:8) +
   theme_classic() +
   scale_fill_manual(values = this_palette[11:12]) +
-  #scale_y_continuous(labels = scales::percent_format()) +
-  scale_x_continuous(breaks = 3:8) +
   scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
   theme(legend.position = "bottom") +
   labs(x = "Pairwise Co-occurrence Count", y = "# Observed")
